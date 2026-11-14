@@ -5,3 +5,11 @@
 "livekit-server-sdk": "^2.0.0",
 "@livekit/components-react": "^2.0.0",
 "@livekit/components-styles": "^1.0.0"
+"dependencies": {
+  "next": "14.2.35",
+  "react": "...",
+  "livekit-client": "^2.0.0",
+  "livekit-server-sdk": "^2.0.0",
+  "@livekit/components-react": "^2.0.0",
+  "@livekit/components-styles": "^1.0.0"
+}
