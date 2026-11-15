@@ -5,6 +5,14 @@ import VideoCard from '../components/VideoCard'
 
 const NAV_H = 60
 
+function countBy(rows) {
+  const m = {}
+  ;(rows || []).forEach((r) => {
+    m[r.video_id] = (m[r.video_id] || 0) + 1
+  })
+  return m
+}
+
 export default function Home() {
   const [tab, setTab] = useState('viral')
   const [videos, setVideos] = useState([])
@@ -18,10 +26,8 @@ export default function Home() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-     let q = supabase
-  .from('videos')
-  .select('*, likes(count), comments(count), saves(count)')
- 
+
+      let q = supabase.from('videos').select('*')
       if (tab === 'viral') {
         q = q
           .order('views', { ascending: false, nullsFirst: false })
@@ -29,26 +35,47 @@ export default function Home() {
       } else {
         q = q.order('created_at', { ascending: false })
       }
-      const { data } = await q.limit(30)
+
+      const { data, error } = await q.limit(30)
+      if (error) console.error('Videos error:', error.message)
       const list = data || []
 
-      const ids = [...new Set(list.map((v) => v.user_id).filter(Boolean))]
-      const map = {}
-      if (ids.length) {
-        const { data: profs } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', ids)
-        ;(profs || []).forEach((p) => {
-          map[p.id] = p
-        })
-      }
+      const ids = list.map((v) => v.id)
+      const userIds = [...new Set(list.map((v) => v.user_id).filter(Boolean))]
+
+      const empty = Promise.resolve({ data: [] })
+      const [likesRes, commentsRes, savesRes, profsRes] = await Promise.all([
+        ids.length
+          ? supabase.from('likes').select('video_id').in('video_id', ids)
+          : empty,
+        ids.length
+          ? supabase.from('comments').select('video_id').in('video_id', ids)
+          : empty,
+        ids.length
+          ? supabase.from('saves').select('video_id').in('video_id', ids)
+          : empty,
+        userIds.length
+          ? supabase.from('profiles').select('*').in('id', userIds)
+          : empty,
+      ])
+
+      const likeMap = countBy(likesRes.data)
+      const commentMap = countBy(commentsRes.data)
+      const saveMap = countBy(savesRes.data)
+
+      const profMap = {}
+      ;(profsRes.data || []).forEach((p) => {
+        profMap[p.id] = p
+      })
 
       setVideos(
         list.map((v) => ({
           ...v,
-          profiles: map[v.user_id] || null,
-          profile: map[v.user_id] || null,
+          likes: [{ count: likeMap[v.id] || 0 }],
+          comments: [{ count: commentMap[v.id] || 0 }],
+          saves: [{ count: saveMap[v.id] || 0 }],
+          profiles: profMap[v.user_id] || null,
+          profile: profMap[v.user_id] || null,
         }))
       )
       setLoading(false)
