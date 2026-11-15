@@ -220,6 +220,8 @@ export default function Profile() {
       {openIndex !== null && (
         <ProfileVideoViewer
           videos={vs}
+          profile={p}
+          me={me}
           startIndex={openIndex}
           onClose={() => setOpenIndex(null)}
         />
