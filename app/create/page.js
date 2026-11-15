@@ -56,12 +56,30 @@ export default function CreateVideoPage() {
 
       const { data: urlData } = supabase.storage.from('videos').getPublicUrl(path)
 
+      // ZËRI: nëse vjen nga /create?sound=ID përdor atë zë,
+      // përndryshe krijo zë të ri me emrin e atij që po poston
+      let soundId = new URLSearchParams(window.location.search).get('sound')
+
+      if (!soundId) {
+        const { data: newSound } = await supabase
+          .from('sounds')
+          .insert({
+            title: 'Zëri origjinal',
+            audio_url: urlData.publicUrl,
+            created_by: user.id,
+          })
+          .select('id')
+          .single()
+        soundId = newSound?.id || null
+      }
+
       const { data: inserted, error: insertError } = await supabase
         .from('videos')
         .insert({
           url: urlData.publicUrl,
           caption: caption.trim(),
           user_id: user.id,
+          sound_id: soundId,
         })
         .select('id')
         .single()
