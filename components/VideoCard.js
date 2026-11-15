@@ -207,7 +207,7 @@ function ActionButton({ icon, label, onClick, active = false }) {
       className="group flex min-w-[52px] flex-col items-center gap-1.5 text-white"
     >
       <span
-        className={`grid h-[50px] w-[50px] place-items-center rounded-full bg-black/35 shadow-lg backdrop-blur-md transition duration-200 group-active:scale-75 ${
+      className={`grid h-[50px] w-[50px] place-items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition duration-200 group-active:scale-75 ${
           active ? 'text-pink-500' : 'text-white'
         }`}
       >
