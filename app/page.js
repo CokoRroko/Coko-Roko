@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import VideoCard from '../components/VideoCard'
 
+const NAV_H = 60
+
 export default function Home() {
   const [tab, setTab] = useState('viral')
   const [videos, setVideos] = useState([])
@@ -25,7 +27,27 @@ export default function Home() {
         q = q.order('created_at', { ascending: false })
       }
       const { data } = await q.limit(30)
-      setVideos(data || [])
+      const list = data || []
+
+      const ids = [...new Set(list.map((v) => v.user_id).filter(Boolean))]
+      const map = {}
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', ids)
+        ;(profs || []).forEach((p) => {
+          map[p.id] = p
+        })
+      }
+
+      setVideos(
+        list.map((v) => ({
+          ...v,
+          profiles: map[v.user_id] || null,
+          profile: map[v.user_id] || null,
+        }))
+      )
       setLoading(false)
     }
     load()
@@ -74,7 +96,7 @@ export default function Home() {
       ) : (
         <div
           style={{
-            height: '100dvh',
+            height: `calc(100dvh - ${NAV_H}px)`,
             overflowY: 'scroll',
             scrollSnapType: 'y mandatory',
           }}
@@ -82,7 +104,12 @@ export default function Home() {
           {videos.map((v) => (
             <div
               key={v.id}
-              style={{ height: 'calc(100dvh - 90px)', scrollSnapAlign: 'start' }}
+              style={{
+                height: `calc(100dvh - ${NAV_H}px)`,
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always',
+                overflow: 'hidden',
+              }}
             >
               <VideoCard v={v} me={me} />
             </div>
