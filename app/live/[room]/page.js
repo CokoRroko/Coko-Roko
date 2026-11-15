@@ -30,6 +30,37 @@ export default function LivePage() {
     getToken();
   }, [room, role]);
 
+  /* REGJISTRO LIVE NË LISTË (vetëm host) */
+  useEffect(() => {
+    if (role !== 'host' || !token) return;
+
+    let timer;
+    let stopped = false;
+
+    async function start() {
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user?.id;
+      if (!uid || stopped) return;
+
+      const beat = () =>
+        supabase.from('lives').upsert({
+          room,
+          user_id: uid,
+          updated_at: new Date().toISOString(),
+        });
+
+      await beat();
+      timer = setInterval(beat, 20000);
+    }
+    start();
+
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      supabase.from('lives').delete().eq('room', room);
+    };
+  }, [room, role, token]);
+
   if (error) return <p className="p-4 text-red-400">{error}</p>;
   if (!token) return <p className="p-4 text-white">Duke u lidhur...</p>;
 
@@ -43,7 +74,12 @@ export default function LivePage() {
         connect={true}
         video={canPublish}
         audio={canPublish}
-        onDisconnected={() => (window.location.href = '/')}
+        onDisconnected={async () => {
+          if (role === 'host') {
+            await supabase.from('lives').delete().eq('room', room);
+          }
+          window.location.href = '/';
+        }}
       >
         <VideoConference />
       </LiveKitRoom>
