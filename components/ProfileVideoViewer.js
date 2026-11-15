@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import VideoCard from '@/components/VideoCard';
@@ -12,19 +12,46 @@ export default function ProfileVideoViewer({
   onClose,
 }) {
   const box = useRef(null);
+  const pushed = useRef(false);
+  const closedByPop = useRef(false);
   const [commentCounts, setCommentCounts] = useState({});
   const [current, setCurrent] = useState(startIndex);
 
-  // hapet direkt te video që prekët dhe bllokon scroll-in e faqes pas tij
-  useEffect(() => {
+  // hapet direkt te video që prekët (para se të shfaqet ekrani)
+  useLayoutEffect(() => {
     const el = box.current;
-    if (el) el.scrollTo({ top: startIndex * el.clientHeight, behavior: 'instant' });
+    if (el) el.scrollTop = startIndex * el.clientHeight;
+  }, [startIndex]);
+
+  // bllokon scroll-in e faqes pas shikuesit
+  useEffect(() => {
     const old = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = old;
     };
-  }, [startIndex]);
+  }, []);
+
+  // butoni Back i telefonit mbyll shikuesin
+  useEffect(() => {
+    window.history.pushState({ viewer: true }, '');
+    pushed.current = true;
+    const onPop = () => {
+      closedByPop.current = true;
+      pushed.current = false;
+      onClose();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const close = () => {
+    if (pushed.current && !closedByPop.current) {
+      window.history.back(); // popstate e mbyll shikuesin
+    } else {
+      onClose();
+    }
+  };
 
   // numri i komenteve për çdo video
   useEffect(() => {
@@ -51,7 +78,13 @@ export default function ProfileVideoViewer({
   // tastiera (kompjuter)
   useEffect(() => {
     const key = (e) => {
-      if (e.key === 'Escape') onClose();
+      const el = box.current;
+      if (!el) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'ArrowDown')
+        el.scrollBy({ top: el.clientHeight, behavior: 'smooth' });
+      if (e.key === 'ArrowUp')
+        el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' });
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -65,7 +98,11 @@ export default function ProfileVideoViewer({
   const prepared = videos.map((v) => ({
     ...v,
     profiles: profile
-      ? { id: profile.id, username: profile.username, avatar_url: profile.avatar_url }
+      ? {
+          id: profile.id,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        }
       : null,
     likes: v.likes?.length ? v.likes : [{ count: 0 }],
     comments: [{ count: commentCounts[v.id] || 0 }],
@@ -80,23 +117,24 @@ export default function ProfileVideoViewer({
         style={{ overscrollBehavior: 'contain' }}
       >
         {prepared.map((video) => (
-          <section
+          <div
             key={video.id}
             className="h-[100dvh] w-full snap-start snap-always"
           >
             <VideoCard v={video} me={me} />
-          </section>
+          </div>
         ))}
       </main>
 
       <button
-        onClick={onClose}
-        className="absolute top-4 left-4 z-[1001] rounded-full bg-black/60 px-4 py-2 text-white font-bold"
+        onClick={close}
+        aria-label="Mbyll"
+        className="absolute left-4 top-5 z-[1001] grid h-11 w-11 place-items-center rounded-full bg-black/40 text-xl font-bold text-white backdrop-blur-md"
       >
         ✕
       </button>
-      <span className="absolute top-5 left-1/2 -translate-x-1/2 z-[1001] text-xs text-white/60 pointer-events-none">
-        {current + 1} / {videos.length}
+      <span className="pointer-events-none absolute left-1/2 top-6 z-[1001] -translate-x-1/2 text-xs text-white/70 drop-shadow">
+        {Math.min(current + 1, videos.length)} / {videos.length}
       </span>
     </div>,
     document.body
