@@ -10,6 +10,8 @@ import {
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import SoundBar from './SoundBar';
+import GiftPanel from './GiftPanel';
+import GiftOverlay from './GiftOverlay';
 
 /* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT */
 let userMuted = false;
@@ -682,6 +684,9 @@ export default function VideoCard({ v, me }) {
         </div>
       )}
 
+      {/* ANIMACIONI I DHURATAVE (video në ekran) */}
+      <GiftOverlay videoId={v.id} />
+
       {/* PLAY / PAUSE */}
       {!playing && (
         <button
@@ -705,7 +710,7 @@ export default function VideoCard({ v, me }) {
       </button>
 
       {/* IKONAT DJATHTAS */}
-      <div className="absolute bottom-28 right-3 z-30 flex flex-col items-center gap-5">
+      <div className="absolute bottom-28 right-3 z-30 flex flex-col items-center gap-4">
 
         {/* PROFILE */}
         <div className="relative mb-2">
@@ -768,6 +773,18 @@ export default function VideoCard({ v, me }) {
           label={shares.toLocaleString()}
           onClick={shareVideo}
         />
+
+        {/* GIFT */}
+        {!ownVideo && (
+          <div className="flex min-w-[52px] flex-col items-center gap-1.5 text-white">
+            <span className="grid h-[50px] w-[50px] place-items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <GiftPanel receiverId={v.user_id} videoId={v.id} />
+            </span>
+            <span className="text-xs font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              Dhuro
+            </span>
+          </div>
+        )}
       </div>
 
       {/* INFORMACIONI POSHTË MAJTAS (ngritur mbi menunë) */}
