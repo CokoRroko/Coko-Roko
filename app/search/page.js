@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 const fmt = (n) => {
-  n = n || 0;
+  n = Number(n) || 0;
   if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.0', '') + 'M';
   if (n >= 1e3) return (n / 1e3).toFixed(1).replace('.0', '') + 'K';
   return String(n);
@@ -86,10 +86,12 @@ export default function Search() {
               playsInline
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-x-0 bottom-0 flex justify-between items-center px-1.5 pb-1 pt-4 text-xs font-semibold bg-gradient-to-t from-black/70 to-transparent">
-              <span>👁 {fmt(v.views)}</span>
-              <span>❤️ {fmt(v.likeCount)}</span>
-            </div>
+            <span className="absolute top-1 left-1 z-10 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
+              ❤️ {fmt(v.likeCount)}
+            </span>
+            <span className="absolute bottom-1 left-1 z-10 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
+              👁 {fmt(v.views)}
+            </span>
           </Link>
         ))}
       </div>
