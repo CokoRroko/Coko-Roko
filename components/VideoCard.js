@@ -9,6 +9,7 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import SoundBar from './SoundBar';
 
 /* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT
    - userMuted: zgjedhja e personit (fillimisht zëri është i ndezur)
@@ -792,6 +793,11 @@ export default function VideoCard({ v, me }) {
             {v.caption}
           </p>
         )}
+
+        {/* SHIRITI I MUZIKËS */}
+        <div className="mb-3">
+          <SoundBar sound={v.sound} />
+        </div>
 
         <div className="flex items-center gap-2 text-xs text-white/80">
           <span>▶</span>
