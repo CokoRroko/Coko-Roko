@@ -239,6 +239,10 @@ export default function VideoCard({ v, me }) {
   );
 
   const [saved, setSaved] = useState(false);
+  const [savesCount, setSavesCount] = useState(
+    Number(v.saves?.[0]?.count || 0)
+  );
+  const [shares, setShares] = useState(Number(v.shares || 0));
   const [following, setFollowing] = useState(false);
 
   const [views, setViews] = useState(Number(v.views || 0));
@@ -451,6 +455,7 @@ export default function VideoCard({ v, me }) {
 
     const previous = saved;
     setSaved(!previous);
+    setSavesCount((old) => Math.max(0, old + (previous ? -1 : 1)));
 
     try {
       const key = {
@@ -465,6 +470,7 @@ export default function VideoCard({ v, me }) {
       if (error) throw error;
     } catch (error) {
       setSaved(previous);
+      setSavesCount((old) => Math.max(0, old + (previous ? 1 : -1)));
       console.error('Save error:', error.message);
     } finally {
       saveLock.current = false;
@@ -573,6 +579,11 @@ export default function VideoCard({ v, me }) {
       } else {
         window.prompt('Kopjo linkun:', url);
       }
+
+      const { error: shareError } = await supabase.rpc('increment_shares', {
+        vid: String(v.id),
+      });
+      if (!shareError) setShares((old) => old + 1);
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Share error:', error.message);
@@ -746,7 +757,7 @@ export default function VideoCard({ v, me }) {
         {/* SAVE */}
         <ActionButton
           icon="bookmark"
-          label={saved ? 'Ruajtur' : 'Ruaj'}
+          label={savesCount.toLocaleString()}
           onClick={toggleSave}
           active={saved}
         />
@@ -754,7 +765,7 @@ export default function VideoCard({ v, me }) {
         {/* SHARE */}
         <ActionButton
           icon="share"
-          label="Ndaj"
+          label={shares.toLocaleString()}
           onClick={shareVideo}
         />
       </div>
@@ -866,7 +877,7 @@ export default function VideoCard({ v, me }) {
                 ))
               ) : (
                 <p className="py-8 text-center text-sm text-white/50">
-                  Bëhu i pari që komenton ❤️
+                  Bëhu i pari që komenton ❤
                 </p>
               )}
             </div>
