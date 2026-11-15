@@ -11,9 +11,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import SoundBar from './SoundBar';
 
-/* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT
-   - userMuted: zgjedhja e personit (fillimisht zëri është i ndezur)
-   - blocked: shfletuesi e bllokon zërin derisa personi të prekë ekranin */
+/* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT */
 let userMuted = false;
 let blocked = false;
 const muteListeners = new Set();
@@ -79,7 +77,7 @@ function installUnlock() {
   });
 }
 
-/* LUAN VIDEON ME ZËRIN E PËRBASHKËT; NËSE SHFLETUESI E BLLOKON, LUAN PA ZË */
+/* LUAN VIDEON ME ZËRIN E PËRBASHKËT */
 function startPlayback(video) {
   video.muted = getMuted();
   const result = video.play();
@@ -95,7 +93,7 @@ function startPlayback(video) {
   }
 }
 
-/* ICONS - SVG, pa instaluar libra shtesë */
+/* ICONS */
 function Icon({ name, size = 26, filled = false }) {
   const common = {
     width: size,
@@ -197,7 +195,7 @@ function Icon({ name, size = 26, filled = false }) {
   }
 }
 
-/* BUTONAT E VEPRIMEVE */
+/* BUTONAT E VEPRIMEVE (pa rreth të zi) */
 function ActionButton({ icon, label, onClick, active = false }) {
   return (
     <button
@@ -207,14 +205,14 @@ function ActionButton({ icon, label, onClick, active = false }) {
       className="group flex min-w-[52px] flex-col items-center gap-1.5 text-white"
     >
       <span
-      className={`grid h-[50px] w-[50px] place-items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition duration-200 group-active:scale-75 ${
+        className={`grid h-[50px] w-[50px] place-items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition duration-200 group-active:scale-75 ${
           active ? 'text-pink-500' : 'text-white'
         }`}
       >
-        <Icon name={icon} size={29} filled={active} />
+        <Icon name={icon} size={32} filled={active} />
       </span>
 
-      <span className="max-w-[65px] text-center text-xs font-bold drop-shadow-md">
+      <span className="max-w-[65px] text-center text-xs font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
         {label}
       </span>
     </button>
@@ -245,7 +243,6 @@ export default function VideoCard({ v, me }) {
 
   const [views, setViews] = useState(Number(v.views || 0));
 
-  // zëri është i përbashkët për të gjitha videot
   const muted = useSyncExternalStore(subscribeMuted, getMuted, () => true);
 
   const [playing, setPlaying] = useState(false);
@@ -660,10 +657,10 @@ export default function VideoCard({ v, me }) {
       />
 
       {/* GRADIENT SIPËR */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-black/40 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-black/30 to-transparent" />
 
-      {/* GRADIENT POSHTË */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-80 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+      {/* GRADIENT POSHTË (më i lehtë) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-56 bg-gradient-to-t from-black/50 via-black/15 to-transparent" />
 
       {/* DOUBLE TAP HEART */}
       {heartVisible && (
@@ -762,13 +759,13 @@ export default function VideoCard({ v, me }) {
         />
       </div>
 
-      {/* INFORMACIONI POSHTË MAJTAS */}
-      <div className="absolute bottom-7 left-4 right-20 z-20">
+      {/* INFORMACIONI POSHTË MAJTAS (ngritur mbi menunë) */}
+      <div className="absolute bottom-28 left-4 right-20 z-20">
 
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <Link
             href={`/profile/${v.user_id}`}
-            className="text-base font-bold drop-shadow-md"
+            className="text-base font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
           >
             @{username}
           </Link>
@@ -789,7 +786,7 @@ export default function VideoCard({ v, me }) {
         </div>
 
         {v.caption && (
-          <p className="mb-3 max-w-full break-words text-sm leading-5 drop-shadow-md">
+          <p className="mb-3 max-w-full break-words text-sm leading-5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
             {v.caption}
           </p>
         )}
@@ -799,7 +796,7 @@ export default function VideoCard({ v, me }) {
           <SoundBar sound={v.sound} />
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-white/80">
+        <div className="flex items-center gap-2 text-xs text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
           <span>▶</span>
           <span>{views.toLocaleString()} shikime</span>
         </div>
