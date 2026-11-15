@@ -14,6 +14,7 @@ function A({ on, i, l }) {
 
 export default function VideoCard({ v, me }) {
   const ref = useRef();
+  const counted = useRef(false);
   const [liked, setLiked] = useState(false);
   const [n, setN] = useState(v.likes?.[0]?.count || 0);
   const [saved, setSaved] = useState(false);
@@ -21,16 +22,34 @@ export default function VideoCard({ v, me }) {
   const [cs, setCs] = useState([]);
   const [t, setT] = useState('');
   const [fol, setFol] = useState(false);
+  const [views, setViews] = useState(v.views || 0);
 
   useEffect(() => {
+    let timer;
     const o = new IntersectionObserver(
       ([e]) => {
-        e.isIntersecting ? ref.current.play().catch(() => {}) : ref.current.pause();
+        if (e.isIntersecting) {
+          ref.current.play().catch(() => {});
+          // numërohet një shikim pasi videoja shihet 2 sekonda
+          if (!counted.current) {
+            timer = setTimeout(async () => {
+              counted.current = true;
+              setViews((x) => x + 1);
+              await supabase.rpc('increment_views', { vid: v.id });
+            }, 2000);
+          }
+        } else {
+          ref.current.pause();
+          clearTimeout(timer);
+        }
       },
       { threshold: 0.7 }
     );
     o.observe(ref.current);
-    return () => o.disconnect();
+    return () => {
+      clearTimeout(timer);
+      o.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -163,7 +182,7 @@ export default function VideoCard({ v, me }) {
         <A on={share} i="↗️" l="Ndaj" />
       </div>
 
-      {/* Emri, follow dhe përshkrimi poshtë majtas */}
+      {/* Emri, follow, përshkrimi dhe shikimet poshtë majtas */}
       <div className="absolute left-4 bottom-28 right-20 z-30 rounded bg-gradient-to-t from-black/60 p-2 text-white">
         <div className="flex items-center gap-3">
           <Link href={`/profile/${v.user_id}`} className="font-bold">
@@ -181,6 +200,7 @@ export default function VideoCard({ v, me }) {
           )}
         </div>
         <p className="mt-1 text-sm">{v.caption}</p>
+        <p className="mt-1 text-xs text-white/70">👁 {views} shikime</p>
       </div>
 
       {open && (
