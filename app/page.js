@@ -18,7 +18,10 @@ export default function Home() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      let q = supabase.from('videos').select('*')
+     let q = supabase
+  .from('videos')
+  .select('*, likes(count), comments(count), saves(count)')
+ 
       if (tab === 'viral') {
         q = q
           .order('views', { ascending: false, nullsFirst: false })
