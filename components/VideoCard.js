@@ -175,11 +175,12 @@ export default function VideoCard({ v, me }) {
             </button>
           )}
         </div>
-
-        <A on={like} i={liked ? '❤️' : '🤍'} l={n} />
-        <A on={loadC} i="💬" l={v.comments?.[0]?.count || 0} />
-        <A on={save} i={saved ? '🔖' : '📑'} l={saved ? 'Ruajtur' : 'Ruaj'} />
-        <A on={share} i="↗️" l="Ndaj" />
+<A on={like} i={liked ? '❤️' : '🤍'} l={n} />
+<A on={loadC} i="💬" l={v.comments?.[0]?.count || 0} />
+<A on={() => {}} i="👁" l={views} />
+<A on={save} i={saved ? '🔖' : '📑'} l={saved ? 'Ruajtur' : 'Ruaj'} />
+<A on={share} i="↗️" l="Ndaj" />
+      
       </div>
 
       {/* Emri, follow, përshkrimi dhe shikimet poshtë majtas */}
