@@ -94,13 +94,28 @@ export default function Home() {
           zIndex: 50,
           display: 'flex',
           justifyContent: 'center',
-          gap: 24,
+          alignItems: 'center',
+          gap: 22,
           padding: '14px 0',
           color: '#fff',
           fontWeight: 700,
           background: 'linear-gradient(#000a, transparent)',
         }}
       >
+        <button
+          onClick={() => window.location.assign('/live')}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: '#ff2d55',
+            }}
+          />
+          LIVE
+        </button>
         <button
           onClick={() => setTab('viral')}
           style={{ opacity: tab === 'viral' ? 1 : 0.5 }}
