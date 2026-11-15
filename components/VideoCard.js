@@ -1,8 +1,98 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+
+/* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT
+   - userMuted: zgjedhja e personit (fillimisht zëri është i ndezur)
+   - blocked: shfletuesi e bllokon zërin derisa personi të prekë ekranin */
+let userMuted = false;
+let blocked = false;
+const muteListeners = new Set();
+const registeredVideos = new Set();
+
+function getMuted() {
+  return userMuted || blocked;
+}
+
+function applyMuted() {
+  const value = getMuted();
+  registeredVideos.forEach((video) => {
+    video.muted = value;
+  });
+}
+
+function emitMuted() {
+  applyMuted();
+  muteListeners.forEach((listener) => listener());
+}
+
+function subscribeMuted(listener) {
+  muteListeners.add(listener);
+  return () => muteListeners.delete(listener);
+}
+
+function setBlocked(value) {
+  if (blocked === value) return;
+  blocked = value;
+  emitMuted();
+}
+
+function toggleGlobalSound() {
+  if (getMuted()) {
+    userMuted = false;
+    blocked = false;
+  } else {
+    userMuted = true;
+  }
+  emitMuted();
+}
+
+function registerVideo(video) {
+  registeredVideos.add(video);
+}
+
+function unregisterVideo(video) {
+  registeredVideos.delete(video);
+}
+
+/* PREKJA E PARË NË EKRAN E ÇBLLOKON ZËRIN */
+let unlockInstalled = false;
+function installUnlock() {
+  if (unlockInstalled || typeof window === 'undefined') return;
+  unlockInstalled = true;
+
+  const unlock = () => {
+    if (blocked) setBlocked(false);
+  };
+
+  ['touchend', 'click', 'keydown', 'pointerup'].forEach((eventName) => {
+    window.addEventListener(eventName, unlock, { passive: true });
+  });
+}
+
+/* LUAN VIDEON ME ZËRIN E PËRBASHKËT; NËSE SHFLETUESI E BLLOKON, LUAN PA ZË */
+function startPlayback(video) {
+  video.muted = getMuted();
+  const result = video.play();
+
+  if (result && result.catch) {
+    result.catch(() => {
+      if (!video.muted) {
+        video.muted = true;
+        setBlocked(true);
+        video.play().catch(() => {});
+      }
+    });
+  }
+}
 
 /* ICONS - SVG, pa instaluar libra shtesë */
 function Icon({ name, size = 26, filled = false }) {
@@ -154,7 +244,9 @@ export default function VideoCard({ v, me }) {
 
   const [views, setViews] = useState(Number(v.views || 0));
 
-  const [muted, setMuted] = useState(true);
+  // zëri është i përbashkët për të gjitha videot
+  const muted = useSyncExternalStore(subscribeMuted, getMuted, () => true);
+
   const [playing, setPlaying] = useState(false);
   const [heartVisible, setHeartVisible] = useState(false);
 
@@ -182,6 +274,25 @@ export default function VideoCard({ v, me }) {
     return false;
   }, [me]);
 
+  /* REGJISTRO VIDEON NË ZËRIN E PËRBASHKËT */
+  useEffect(() => {
+    installUnlock();
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    registerVideo(video);
+    video.muted = getMuted();
+
+    return () => unregisterVideo(video);
+  }, []);
+
+  /* SINKRONIZO ZËRIN */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) video.muted = muted;
+  }, [muted]);
+
   /* AUTOPLAY + NUMËRIMI I SHIKIMEVE */
   useEffect(() => {
     const video = videoRef.current;
@@ -190,7 +301,7 @@ export default function VideoCard({ v, me }) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-          video.play().catch(() => {});
+          startPlayback(video);
 
           if (!counted.current && !viewTimer.current) {
             viewTimer.current = setTimeout(async () => {
@@ -477,20 +588,23 @@ export default function VideoCard({ v, me }) {
     if (!video) return;
 
     if (video.paused) {
-      video.play().catch(() => {});
+      startPlayback(video);
     } else {
       video.pause();
     }
   }
 
-  /* ZËRI */
+  /* ZËRI: NDEZ/FIK PËR TË GJITHA VIDEOT */
   function toggleSound() {
     const video = videoRef.current;
     if (!video) return;
 
-    const nextMuted = !video.muted;
-    video.muted = nextMuted;
-    setMuted(nextMuted);
+    const willUnmute = getMuted();
+    toggleGlobalSound();
+
+    if (willUnmute && video.paused) {
+      video.play().catch(() => {});
+    }
   }
 
   /* ANIMACIONI I ZEMRËS */
