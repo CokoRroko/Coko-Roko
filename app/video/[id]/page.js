@@ -1,177 +1,100 @@
-
 'use client';
-
 import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import VideoCard from '@/components/VideoCard';
 
-export default function HomePage() {
-  const [videos, setVideos] = useState([]);
+export default function VideoPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [video, setVideo] = useState(null);
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [missing, setMissing] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function loadFeed() {
-      try {
-        setLoading(true);
-        setError('');
+    async function load() {
+      setLoading(true);
 
-        // Merr përdoruesin aktual
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!active) return;
+      setMe(user || null);
 
-        if (!active) return;
-        setMe(user || null);
+      const { data: v } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-        // Merr videot e publikuara
-        const { data: videoData, error: videoError } = await supabase
-          .from('videos')
-          .select('*');
+      if (!active) return;
+      if (!v) {
+        setMissing(true);
+        setLoading(false);
+        return;
+      }
 
-        if (videoError) throw videoError;
-
-        if (!videoData || videoData.length === 0) {
-          setVideos([]);
-          return;
-        }
-
-        const videoIds = videoData.map((v) => v.id);
-        const userIds = [...new Set(videoData.map((v) => v.user_id))];
-
-        // Merr profilet
-        const { data: profiles, error: profilesError } = await supabase
+      const [prof, likes, comments] = await Promise.all([
+        supabase
           .from('profiles')
           .select('id, username, avatar_url')
-          .in('id', userIds);
-
-        if (profilesError) throw profilesError;
-
-        // Merr pëlqimet
-        const { data: likes, error: likesError } = await supabase
+          .eq('id', v.user_id)
+          .maybeSingle(),
+        supabase
           .from('likes')
-          .select('video_id')
-          .in('video_id', videoIds);
-
-        if (likesError) throw likesError;
-
-        // Merr komentet
-        const { data: comments, error: commentsError } = await supabase
+          .select('*', { count: 'exact', head: true })
+          .eq('video_id', v.id),
+        supabase
           .from('comments')
-          .select('video_id')
-          .in('video_id', videoIds);
+          .select('*', { count: 'exact', head: true })
+          .eq('video_id', v.id),
+      ]);
 
-        if (commentsError) throw commentsError;
-
-        // Llogarit numrin e pëlqimeve dhe komenteve
-        const likeCounts = {};
-        const commentCounts = {};
-
-        (likes || []).forEach((item) => {
-          likeCounts[item.video_id] =
-            (likeCounts[item.video_id] || 0) + 1;
-        });
-
-        (comments || []).forEach((item) => {
-          commentCounts[item.video_id] =
-            (commentCounts[item.video_id] || 0) + 1;
-        });
-
-        const profileMap = {};
-        (profiles || []).forEach((profile) => {
-          profileMap[profile.id] = profile;
-        });
-
-        // Përgatit videot për VideoCard
-        const preparedVideos = videoData.map((video) => ({
-          ...video,
-          profiles: profileMap[video.user_id] || null,
-          likes: [{ count: likeCounts[video.id] || 0 }],
-          comments: [{ count: commentCounts[video.id] || 0 }],
-        }));
-
-        // Rendit videot sipas popullaritetit
-        const now = Date.now();
-
-        preparedVideos.sort((a, b) => {
-          function viralScore(video) {
-            const views = Number(video.views || 0);
-            const likes = Number(video.likes?.[0]?.count || 0);
-            const comments = Number(video.comments?.[0]?.count || 0);
-
-            const postedAt = video.created_at
-              ? new Date(video.created_at).getTime()
-              : now;
-
-            const hoursOld = Math.max(
-              0,
-              (now - postedAt) / (1000 * 60 * 60)
-            );
-
-            const freshness = Math.max(0, 500 - hoursOld * 5);
-
-            return views + likes * 5 + comments * 8 + freshness;
-          }
-
-          return viralScore(b) - viralScore(a);
-        });
-
-        if (active) setVideos(preparedVideos);
-
-      } catch (err) {
-        console.error('Feed error:', err);
-        if (active) {
-          setError(err.message || 'Nuk u arrit të ngarkohen videot.');
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
+      if (!active) return;
+      setVideo({
+        ...v,
+        profiles: prof.data || null,
+        likes: [{ count: likes.count || 0 }],
+        comments: [{ count: comments.count || 0 }],
+      });
+      setLoading(false);
     }
 
-    loadFeed();
-
+    if (id) load();
     return () => {
       active = false;
     };
-  }, []);
+  }, [id]);
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-black text-white">
-        Duke ngarkuar videot...
+      <main className="grid min-h-[100dvh] place-items-center bg-black text-white">
+        Duke ngarkuar videon...
       </main>
     );
   }
 
-  if (error) {
+  if (missing || !video) {
     return (
-      <main className="grid min-h-screen place-items-center bg-black p-5 text-center text-red-400">
-        {error}
-      </main>
-    );
-  }
-
-  if (videos.length === 0) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-black text-white">
-        Ende nuk ka video të publikuara.
+      <main className="grid min-h-[100dvh] place-items-center bg-black p-5 text-center text-white/60">
+        Videoja nuk u gjet.
       </main>
     );
   }
 
   return (
-    <main className="h-[100dvh] w-full overflow-y-auto snap-y snap-mandatory bg-black">
-      {videos.map((video) => (
-        <section
-          key={video.id}
-          className="h-[100dvh] w-full snap-start snap-always"
-        >
-          <VideoCard v={video} me={me} />
-        </section>
-      ))}
+    <main className="relative h-[100dvh] w-full bg-black">
+      <VideoCard v={video} me={me} />
+      <button
+        onClick={() => router.back()}
+        aria-label="Kthehu"
+        className="absolute left-4 top-5 z-40 grid h-11 w-11 place-items-center rounded-full bg-black/40 text-xl font-bold text-white backdrop-blur-md"
+      >
+        ←
+      </button>
     </main>
   );
 }
