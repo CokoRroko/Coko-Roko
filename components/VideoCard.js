@@ -116,77 +116,98 @@ export default function VideoCard({ v, me }) {
     }
   }
 
- return (
-  <section className="relative isolate h-[100dvh] w-full snap-start overflow-hidden bg-black">
-    <video
-      ref={ref}
-      src={v.url}
-      loop
-      playsInline
-      muted
-      className="absolute inset-0 z-0 h-full w-full object-cover"
-      onClick={(e) => {
-        e.target.muted = false;
-        e.target.paused ? e.target.play() : e.target.pause();
-      }}
-    />
+  return (
+    <section className="relative isolate h-[100dvh] w-full snap-start overflow-hidden bg-black">
+      <video
+        ref={ref}
+        src={v.url}
+        loop
+        playsInline
+        muted
+        className="absolute inset-0 z-0 h-full w-full object-cover"
+        onClick={(e) => {
+          e.target.muted = false;
+          e.target.paused ? e.target.play() : e.target.pause();
+        }}
+      />
 
-    {/* Kolona djathtas: profili, like, komente, ruaj, share */}
-    <div className="absolute right-3 bottom-28 z-30 flex flex-col items-center gap-5 text-white">
-      <div className="relative mb-2">
-        <Link href={`/profile/${v.user_id}`}>
-          {v.profiles?.avatar_url ? (
-            <img
-              src={v.profiles.avatar_url}
-              alt=""
-              className="h-12 w-12 rounded-full border-2 border-white object-cover"
-            />
-          ) : (
-            <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-white bg-card text-lg font-bold">
-              {(v.profiles?.username || '?')[0].toUpperCase()}
-            </div>
+      {/* Kolona djathtas: profili, like, komente, ruaj, share */}
+      <div className="absolute right-3 bottom-28 z-30 flex flex-col items-center gap-5 text-white">
+        <div className="relative mb-2">
+          <Link href={`/profile/${v.user_id}`}>
+            {v.profiles?.avatar_url ? (
+              <img
+                src={v.profiles.avatar_url}
+                alt=""
+                className="h-12 w-12 rounded-full border-2 border-white object-cover"
+              />
+            ) : (
+              <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-white bg-card text-lg font-bold">
+                {(v.profiles?.username || '?')[0].toUpperCase()}
+              </div>
+            )}
+          </Link>
+          {me?.id !== v.user_id && !fol && (
+            <button
+              onClick={follow}
+              className="absolute -bottom-2 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-brand text-xs font-bold"
+            >
+              +
+            </button>
           )}
-        </Link>
-        {me?.id !== v.user_id && !fol && (
-          <button
-            onClick={follow}
-            className="absolute -bottom-2 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-brand text-xs font-bold"
-          >
-            +
-          </button>
-        )}
+        </div>
+
+        <A on={like} i={liked ? '❤️' : '🤍'} l={n} />
+        <A on={loadC} i="💬" l={v.comments?.[0]?.count || 0} />
+        <A on={save} i={saved ? '🔖' : '📑'} l={saved ? 'Ruajtur' : 'Ruaj'} />
+        <A on={share} i="↗️" l="Ndaj" />
       </div>
 
-      <A on={like} i={liked ? '❤️' : '🤍'} l={n} />
-      <A on={loadC} i="💬" l={v.comments?.[0]?.count || 0} />
-      <A on={save} i={saved ? '🔖' : '📑'} l={saved ? 'Ruajtur' : 'Ruaj'} />
-      <A on={share} i="↗️" l="Ndaj" />
-    </div>
-
-    {/* Emri, follow dhe përshkrimi poshtë majtas */}
-    <div className="absolute left-4 bottom-28 right-20 z-30 rounded bg-gradient-to-t from-black/60 p-2 text-white">
-      <div className="flex items-center gap-3">
-        <Link href={`/profile/${v.user_id}`} className="font-bold">
-          @{v.profiles?.username}
-        </Link>
-        {me?.id !== v.user_id && (
-          <button
-            onClick={follow}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              fol ? 'border-white/40' : 'bg-brand border-brand'
-            }`}
-          >
-            {fol ? 'Following' : 'Follow'}
-          </button>
-        )}
+      {/* Emri, follow dhe përshkrimi poshtë majtas */}
+      <div className="absolute left-4 bottom-28 right-20 z-30 rounded bg-gradient-to-t from-black/60 p-2 text-white">
+        <div className="flex items-center gap-3">
+          <Link href={`/profile/${v.user_id}`} className="font-bold">
+            @{v.profiles?.username}
+          </Link>
+          {me?.id !== v.user_id && (
+            <button
+              onClick={follow}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                fol ? 'border-white/40' : 'bg-brand border-brand'
+              }`}
+            >
+              {fol ? 'Following' : 'Follow'}
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-sm">{v.caption}</p>
       </div>
-      <p className="mt-1 text-sm">{v.caption}</p>
-    </div>
 
-    {open && (
-      <div className="absolute inset-x-0 bottom-0 z-40 flex h-3/5 flex-col rounded-t-3xl bg-card p-4 text-white">
-        {/* ... pjesa e komenteve mbetet njësoj si e kishe ... */}
-      </div>
-    )}
-  </section>
-);
+      {open && (
+        <div className="absolute inset-x-0 bottom-0 z-40 flex h-3/5 flex-col rounded-t-3xl bg-card p-4 text-white">
+          <div className="mb-2 flex justify-between">
+            <b>Komente</b>
+            <button onClick={() => setOpen(false)}>✕</button>
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto">
+            {cs.map((c) => (
+              <p key={c.id} className="text-sm">
+                <b>@{c.profiles?.username}</b> {c.body}
+              </p>
+            ))}
+            {!cs.length && <p className="text-sm text-white/50">Asnjë koment ende.</p>}
+          </div>
+          <form onSubmit={send} className="mb-14 mt-2 flex gap-2">
+            <input
+              className="inp"
+              value={t}
+              onChange={(e) => setT(e.target.value)}
+              placeholder="Shto koment..."
+            />
+            <button className="btn">↑</button>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
