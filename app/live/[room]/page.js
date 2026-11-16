@@ -270,6 +270,8 @@ export default function LivePage() {
         connect={true}
         video={canPublish}
         audio={canPublish}
+        onError={(e) => alert('Gabim LiveKit: ' + e.message)}
+        onMediaDeviceFailure={(f) => alert('Gabim kamera/mikrofon: ' + f)}
         onDisconnected={async () => {
           if (role === 'host') {
             await supabase.from('lives').delete().eq('room', room);
@@ -330,3 +332,4 @@ export default function LivePage() {
     </div>
   );
 }
+
