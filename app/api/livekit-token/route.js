@@ -1,6 +1,5 @@
-
 import { AccessToken } from 'livekit-server-sdk';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req) {
   try {
@@ -10,6 +9,13 @@ export async function GET(req) {
 
     const auth = req.headers.get('authorization') || '';
     const jwt = auth.replace('Bearer ', '');
+
+    // klient Supabase që vepron si përdoruesi (që RLS të funksionojë)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+    );
 
     const { data, error } = await supabase.auth.getUser(jwt);
     const user = data?.user;
@@ -28,6 +34,24 @@ export async function GET(req) {
       );
     }
 
+    // mysafiri duhet të ketë ftesë të pranuar për këtë dhomë
+    if (role === 'guest') {
+      const { data: inv } = await supabase
+        .from('live_invites')
+        .select('id')
+        .eq('to_user', user.id)
+        .eq('room', room)
+        .eq('status', 'accepted')
+        .limit(1);
+
+      if (!inv || inv.length === 0) {
+        return Response.json(
+          { error: 'Nuk ke ftesë për këtë LIVE.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
@@ -38,7 +62,7 @@ export async function GET(req) {
       roomJoin: true,
       room,
       canSubscribe: true,
-      canPublish: role === 'host',
+      canPublish: role === 'host' || role === 'guest',
       canPublishData: true,
     });
 
