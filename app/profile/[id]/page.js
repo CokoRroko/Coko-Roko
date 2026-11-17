@@ -28,6 +28,8 @@ export default function Profile() {
   const [form, setForm] = useState({});
   const [missing, setMissing] = useState(false);
   const [openIndex, setOpenIndex] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
 
   const isMe = me?.id === id;
 
@@ -76,26 +78,55 @@ export default function Profile() {
   async function follow() {
     if (!me) return (location.href = '/login');
     const k = { follower_id: me.id, following_id: id };
-    if (fol) await supabase.from('follows').delete().match(k);
-    else await supabase.from('follows').insert(k);
-    load();
+    const was = fol;
+
+    // Ndryshim i menjëhershëm në ekran
+    setFol(!was);
+    setC((x) => ({ ...x, f: Math.max(0, x.f + (was ? -1 : 1)) }));
+
+    const { error } = was
+      ? await supabase.from('follows').delete().match(k)
+      : await supabase.from('follows').insert(k);
+
+    if (error) {
+      setFol(was);
+      setC((x) => ({ ...x, f: Math.max(0, x.f + (was ? 1 : -1)) }));
+    }
   }
 
   async function save(e) {
     e.preventDefault();
-    let avatar_url = form.avatar_url;
-    if (form.file) {
-      const path = `${me.id}/avatar-${Date.now()}`;
-      await supabase.storage.from('avatars').upload(path, form.file);
-      avatar_url = supabase.storage.from('avatars').getPublicUrl(path).data
-        .publicUrl;
+    setSaving(true);
+    setErr('');
+    try {
+      let avatar_url = form.avatar_url;
+
+      if (form.file) {
+        const path = `${me.id}/avatar-${Date.now()}`;
+        const { error: upErr } = await supabase.storage
+          .from('avatars')
+          .upload(path, form.file);
+        if (upErr) throw upErr;
+        avatar_url = supabase.storage.from('avatars').getPublicUrl(path).data
+          .publicUrl;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: (form.username || '').trim(),
+          bio: form.bio,
+          avatar_url,
+        })
+        .eq('id', id);
+      if (error) throw error;
+
+      setEd(false);
+      load();
+    } catch (e2) {
+      setErr('Nuk u ruajt. Provo përsëri.');
     }
-    await supabase
-      .from('profiles')
-      .update({ username: form.username, bio: form.bio, avatar_url })
-      .eq('id', id);
-    setEd(false);
-    load();
+    setSaving(false);
   }
 
   if (missing) return <p className="p-8 text-white/50">Ky profil nuk u gjet.</p>;
@@ -104,13 +135,10 @@ export default function Profile() {
   const totalLikes = vs.reduce((s, v) => s + likesOf(v), 0);
 
   return (
-    <div className="p-4">
+    <div className="p-4 pb-24">
       <div className="flex flex-col items-center gap-2 pt-4">
         <img
-          src={
-            p.avatar_url ||
-            'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'
-          }
+          src={p.avatar_url || '/avatar.svg'}
           alt=""
           className="w-24 h-24 rounded-full bg-gradient-to-br from-violet to-brand object-cover"
         />
@@ -119,12 +147,12 @@ export default function Profile() {
 
         <div className="flex gap-6 text-center text-sm">
           <div>
-            <b>{c.g}</b>
+            <b>{fmt(c.g)}</b>
             <br />
             Ndjek
           </div>
           <div>
-            <b>{c.f}</b>
+            <b>{fmt(c.f)}</b>
             <br />
             Ndjekës
           </div>
@@ -169,6 +197,7 @@ export default function Profile() {
         <form onSubmit={save} className="space-y-3 my-4">
           <input
             className="inp"
+            placeholder="Emri i përdoruesit"
             value={form.username || ''}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
           />
@@ -183,7 +212,10 @@ export default function Profile() {
             accept="image/*"
             onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
           />
-          <button className="btn w-full">Ruaj</button>
+          {err && <p className="text-sm text-red-400">{err}</p>}
+          <button className="btn w-full" disabled={saving}>
+            {saving ? 'Po ruhet...' : 'Ruaj'}
+          </button>
         </form>
       )}
 
@@ -201,7 +233,8 @@ export default function Profile() {
             className="relative aspect-[9/16] bg-card overflow-hidden cursor-pointer"
           >
             <video
-              src={v.url}
+              src={`${v.url}#t=0.1`}
+              poster={v.thumbnail_url || undefined}
               preload="metadata"
               muted
               playsInline
