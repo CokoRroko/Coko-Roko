@@ -4,6 +4,9 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+// Madhësia maksimale e videos në MB (ndryshoje nëse të duhet)
+const MAX_MB = 30
+
 export default function CreateVideoPage() {
   const router = useRouter()
   const galleryRef = useRef(null)
@@ -19,11 +22,20 @@ export default function CreateVideoPage() {
   function handleFile(e) {
     const f = e.target.files?.[0]
     if (!f) return
+    e.target.value = ''
+
+    const sizeMb = f.size / (1024 * 1024)
+    if (sizeMb > MAX_MB) {
+      setError(
+        `Videoja është shumë e madhe (${sizeMb.toFixed(0)} MB). Maksimumi është ${MAX_MB} MB. Vendose kamerën në 720p ose 1080p 30fps dhe provo prapë.`
+      )
+      return
+    }
+
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setFile(f)
     setPreviewUrl(URL.createObjectURL(f))
     setError(null)
-    e.target.value = ''
   }
 
   function reset() {
@@ -49,9 +61,14 @@ export default function CreateVideoPage() {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4'
       const path = `${user.id}/${Date.now()}.${ext}`
 
+      // cacheControl: shfletuesi e ruan videon 1 vit, nuk e shkarkon çdo herë
       const { error: uploadError } = await supabase.storage
         .from('videos')
-        .upload(path, file, { contentType: file.type, upsert: false })
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+          cacheControl: '31536000',
+        })
       if (uploadError) throw uploadError
 
       const { data: urlData } = supabase.storage.from('videos').getPublicUrl(path)
@@ -117,6 +134,8 @@ export default function CreateVideoPage() {
       {!file ? (
         /* HAPI 1: zgjedh mënyrën, dy opsione të ndara */
         <div className="space-y-4">
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
           <div className="rounded-3xl border border-white/10 bg-[#161625] p-5">
             <p className="mb-1 text-lg font-bold">📹 Regjistro me kamerë</p>
             <p className="mb-4 text-sm text-white/60">Hap kamerën dhe regjistro direkt.</p>
