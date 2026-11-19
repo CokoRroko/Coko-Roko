@@ -84,8 +84,9 @@ function startPlayback(video) {
   const result = video.play();
 
   if (result && result.catch) {
-    result.catch(() => {
-      if (!video.muted) {
+    result.catch((err) => {
+      // Bllokohet zëri vetëm kur shfletuesi nuk lejon autoplay me zë
+      if (err && err.name === 'NotAllowedError' && !video.muted) {
         video.muted = true;
         setBlocked(true);
         video.play().catch(() => {});
@@ -221,6 +222,7 @@ function ActionButton({ icon, label, onClick, active = false }) {
 }
 
 export default function VideoCard({ v, me }) {
+  const sectionRef = useRef(null);
   const videoRef = useRef(null);
   const observerRef = useRef(null);
 
@@ -233,6 +235,9 @@ export default function VideoCard({ v, me }) {
   const saveLock = useRef(false);
   const followLock = useRef(false);
   const commentLock = useRef(false);
+
+  /* VIDEOJA NGARKOHET VETËM KUR AFROHET NË EKRAN (kursen trafikun) */
+  const [load, setLoad] = useState(false);
 
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(
@@ -313,6 +318,28 @@ export default function VideoCard({ v, me }) {
     };
   }, [v.sound_id, sound]);
 
+  /* NGARKO VIDEON VETËM KUR ËSHTË AFËR EKRANIT */
+  useEffect(() => {
+    if (load) return;
+
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100% 0px 100% 0px' }
+    );
+
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [load]);
+
   /* REGJISTRO VIDEON NË ZËRIN E PËRBASHKËT */
   useEffect(() => {
     installUnlock();
@@ -335,7 +362,7 @@ export default function VideoCard({ v, me }) {
   /* AUTOPLAY + NUMËRIMI I SHIKIMEVE */
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !load) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -383,11 +410,14 @@ export default function VideoCard({ v, me }) {
       observerRef.current = null;
       video.pause();
 
-      if (viewTimer.current) clearTimeout(viewTimer.current);
+      if (viewTimer.current) {
+        clearTimeout(viewTimer.current);
+        viewTimer.current = null;
+      }
       if (tapTimer.current) clearTimeout(tapTimer.current);
       if (heartTimer.current) clearTimeout(heartTimer.current);
     };
-  }, [v.id]);
+  }, [v.id, load]);
 
   /* NGARKO STATUSIN E PËRDORUESIT */
   useEffect(() => {
@@ -688,16 +718,19 @@ export default function VideoCard({ v, me }) {
   }
 
   return (
-    <section className="relative isolate h-[100dvh] w-full snap-start snap-always overflow-hidden bg-black text-white">
+    <section
+      ref={sectionRef}
+      className="relative isolate h-[100dvh] w-full snap-start snap-always overflow-hidden bg-black text-white"
+    >
 
       {/* VIDEO */}
       <video
         ref={videoRef}
-        src={v.url}
+        src={load ? v.url : undefined}
         loop
         playsInline
         muted={muted}
-        preload="metadata"
+        preload={load ? 'metadata' : 'none'}
         className="absolute inset-0 z-0 h-full w-full object-cover"
         onClick={handleVideoClick}
         onPlay={() => setPlaying(true)}
