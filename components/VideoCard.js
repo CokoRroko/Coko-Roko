@@ -10,6 +10,7 @@ import {
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import SoundBar from './SoundBar';
+import SoundDisc from './SoundDisc';
 
 /* ZËRI I PËRBASHKËT PËR TË GJITHA VIDEOT */
 let userMuted = false;
@@ -262,6 +263,9 @@ export default function VideoCard({ v, me }) {
     Number(v.comments?.[0]?.count || 0)
   );
 
+  /* ZËRI I VIDEOS (merret vetë nga baza) */
+  const [sound, setSound] = useState(v.sound?.owner ? v.sound : null);
+
   const username = v.profiles?.username || 'user';
   const avatar = v.profiles?.avatar_url;
   const ownVideo = me?.id === v.user_id;
@@ -275,6 +279,39 @@ export default function VideoCard({ v, me }) {
 
     return false;
   }, [me]);
+
+  /* NGARKO ZËRIN E VIDEOS DHE PROFILIN E TË PARIT QË E HEDHI */
+  useEffect(() => {
+    if (sound || !v.sound_id) return;
+
+    let active = true;
+
+    (async () => {
+      const { data: s } = await supabase
+        .from('sounds')
+        .select('id,title,audio_url,owner_id')
+        .eq('id', v.sound_id)
+        .maybeSingle();
+
+      if (!s || !active) return;
+
+      let owner = null;
+      if (s.owner_id) {
+        const { data: o } = await supabase
+          .from('profiles')
+          .select('id,username,avatar_url')
+          .eq('id', s.owner_id)
+          .maybeSingle();
+        owner = o;
+      }
+
+      if (active) setSound({ ...s, owner });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [v.sound_id, sound]);
 
   /* REGJISTRO VIDEON NË ZËRIN E PËRBASHKËT */
   useEffect(() => {
@@ -705,7 +742,7 @@ export default function VideoCard({ v, me }) {
       </button>
 
       {/* IKONAT DJATHTAS */}
-      <div className="absolute bottom-28 right-3 z-30 flex flex-col items-center gap-5">
+      <div className="absolute bottom-24 right-3 z-30 flex flex-col items-center gap-4">
 
         {/* PROFILE */}
         <div className="relative mb-2">
@@ -768,6 +805,9 @@ export default function VideoCard({ v, me }) {
           label={shares.toLocaleString()}
           onClick={shareVideo}
         />
+
+        {/* DISKU I ZËRIT */}
+        <SoundDisc sound={sound} />
       </div>
 
       {/* INFORMACIONI POSHTË MAJTAS (ngritur mbi menunë) */}
@@ -804,7 +844,7 @@ export default function VideoCard({ v, me }) {
 
         {/* SHIRITI I MUZIKËS */}
         <div className="mb-3">
-          <SoundBar sound={v.sound} />
+          <SoundBar sound={sound} />
         </div>
 
         <div className="flex items-center gap-2 text-xs text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
